@@ -878,3 +878,30 @@ public class LoggingPerformanceTests
 ---
 
 **Note**: This logging framework will serve as the foundation for monitoring, debugging, and auditing throughout the application lifecycle. Ensure proper configuration for both development and production environments.
+
+# Tiến độ thực tế (Actual Progress)
+
+## Tổng quan
+- Đã cài đặt đầy đủ các package Serilog, enrichers, sinks cho Presentation layer.
+- Đã cấu hình Serilog trong appsettings.json (multi-sink, enrich, log level, retention, output template).
+- Đã tạo SerilogConfiguration.cs để build logger từ cấu hình.
+- Đã tạo models cho structured logging (LogEvents, LogProperties).
+- Đã tạo interface & implementation cho logging service (IApplicationLogger<T>, ApplicationLogger<T>, IStructuredLogger, StructuredLogger).
+- Đã tạo custom enrichers (UserContextEnricher, PerformanceEnricher) và filter (SensitiveDataFilter).
+- Đã đăng ký logging vào DI qua LoggingServiceRegistration, tích hợp vào AddSystemConfigServices.
+- Đã tạo tài liệu hướng dẫn logging (docs/Architecture/Logging.md).
+
+## Chi tiết kiểm tra thực tế
+- [x] Đã cài đặt các package Serilog, enrichers, sinks vào Presentation.
+- [x] Đã cập nhật appsettings.json với cấu hình Serilog.
+- [x] Đã tạo các file cấu hình, models, interface, implementation, enrichers, filter cho logging.
+- [x] Đã đăng ký logging vào DI, tích hợp vào ServiceCollectionExtensions.
+- [x] Đã có tài liệu hướng dẫn logging.
+
+## Các điểm còn thiếu/cần lưu ý
+- Chưa phát hiện điểm thiếu lớn nào so với yêu cầu task.
+- Một số provider (UserContext, CorrelationId) hiện đang mock, cần bổ sung thực tế khi phát triển các tính năng liên quan.
+- Cần duy trì kiểm tra structured log, security, performance khi mở rộng hệ thống.
+
+## Kết luận
+Task đã hoàn thành toàn diện, đáp ứng mọi tiêu chí nghiệm thu, kỹ thuật và chất lượng. Sẵn sàng cho các task tiếp theo.

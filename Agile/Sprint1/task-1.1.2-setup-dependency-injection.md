@@ -605,3 +605,32 @@ public class ServiceResolutionPerformanceTests
 ---
 
 **Note**: This task establishes the dependency injection foundation that will support all subsequent development. Ensure proper service lifetime management and avoid circular dependencies that could impact application performance and maintainability.
+
+# Tiến độ thực tế (Actual Progress)
+
+## Tổng quan
+- Đã cài đặt đầy đủ các package DI, configuration, hosting, MediatR, AutoMapper, Serilog, Redis, FluentValidation cho Presentation layer.
+- Đã tạo các extension method cho từng layer (Domain, Application, Infrastructure, Presentation) và gom lại qua ServiceCollectionExtensions.
+- Đã cấu hình bootstrap DI container trong Program.cs, tích hợp HostBuilder, đọc appsettings.json, resolve MainForm từ DI.
+- Đã đăng ký service mẫu, generic repository, factory, conditional registration, đúng lifetime cho từng layer.
+- Đã viết unit test kiểm tra service registration, lifetime, circular dependency.
+- Đã viết integration test kiểm tra hiệu năng service resolution.
+- Đã tạo tài liệu hướng dẫn, giải thích pattern, lý do chọn lifetime, troubleshooting.
+- Đã review checklist nghiệm thu, đảm bảo code, test, tài liệu đều đầy đủ, đúng chuẩn.
+
+## Chi tiết kiểm tra thực tế
+- [x] Đã cài đặt các package DI, configuration, MediatR, AutoMapper, Serilog, Redis, FluentValidation vào Presentation.
+- [x] Đã tạo các file extension method: DomainServiceRegistration.cs, ApplicationServiceRegistration.cs, InfrastructureServiceRegistration.cs, PresentationServiceRegistration.cs, ServiceCollectionExtensions.cs.
+- [x] Đã chỉnh sửa Program.cs để sử dụng HostBuilder, cấu hình DI, resolve MainForm từ container.
+- [x] Đã đăng ký service mẫu, generic repository, factory, conditional registration, đúng lifetime.
+- [x] Đã có unit test kiểm tra service registration, lifetime, circular dependency (DependencyInjectionTests.cs, UnitTest1.cs).
+- [x] Đã có integration test kiểm tra hiệu năng service resolution (ServiceResolutionPerformanceTests.cs).
+- [x] Đã có tài liệu hướng dẫn DI (docs/Architecture/DependencyInjection.md).
+
+## Các điểm còn thiếu/cần lưu ý
+- Chưa phát hiện điểm thiếu lớn nào so với yêu cầu task.
+- Một số service mẫu (interface/class) có thể cần bổ sung chi tiết logic thực tế khi phát triển các tính năng tiếp theo.
+- Cần duy trì kiểm tra circular dependency, lifetime, performance khi mở rộng hệ thống.
+
+## Kết luận
+Task đã hoàn thành toàn diện, đáp ứng mọi tiêu chí nghiệm thu, kỹ thuật và chất lượng. Sẵn sàng cho các task tiếp theo.
