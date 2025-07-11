@@ -1,30 +1,26 @@
-# Modern POS Multi-Store Configuration Solution - Architecture Document
+# Simplified POS Configuration System - Architecture Document
 
 ## 📋 Document Information
 
 | **Attribute** | **Value** |
 |---------------|-----------|
-| **Document Version** | 2.0 |
+| **Document Version** | 3.0 (Simplified) |
 | **Last Updated** | December 2024 |
-| **Architecture Pattern** | Clean Architecture + CQRS + DDD |
-| **Technology Stack** | .NET 8, Windows Forms, MediatR, Serilog |
-| **Target Deployment** | Windows 10/11 Enterprise |
+| **Architecture Pattern** | Simplified 3-Layer Architecture |
+| **Technology Stack** | .NET 8, Windows Forms, Registry, JSON |
+| **Target Deployment** | Windows 10/11 Desktop |
 
 ---
 
 ## 📚 Table of Contents
 
 1. [Executive Summary](#1-executive-summary)
-2. [Architecture Overview](#2-architecture-overview)
-3. [Domain Design](#3-domain-design)
-4. [Application Services](#4-application-services)
-5. [Infrastructure Layer](#5-infrastructure-layer)
-6. [Presentation Layer](#6-presentation-layer)
-7. [Security Architecture](#7-security-architecture)
-8. [Performance Strategy](#8-performance-strategy)
-9. [Quality Assurance](#9-quality-assurance)
-10. [Implementation Strategy](#10-implementation-strategy)
-11. [Deployment & Operations](#11-deployment--operations)
+2. [Simplified Architecture](#2-simplified-architecture)
+3. [Data Models](#3-data-models)
+4. [Business Services](#4-business-services)
+5. [Registry Management](#5-registry-management)
+6. [UI Components](#6-ui-components)
+7. [Implementation Plan](#7-implementation-plan)
 
 ---
 
@@ -32,663 +28,505 @@
 
 ### 1.1 📊 Business Context
 
-**Vision**: Deliver a modern, secure, and highly configurable POS multi-store management solution that reduces operational complexity while ensuring enterprise-grade reliability.
+**Vision**: Tạo một ứng dụng cấu hình POS đơn giản với Windows Forms để quản lý cấu hình database, máy in theo khu vực, và các thiết lập hệ thống tùy chỉnh.
 
-**Current Challenges**:
-- Manual configuration processes consuming 4-6 hours per store setup
-- Configuration errors leading to 15-20% operational downtime
-- Security vulnerabilities in legacy configuration storage
-- Lack of centralized configuration management across multiple stores
+**Yêu cầu cốt lõi**:
+- Quản lý kết nối database (chính/phụ)
+- Thiết lập máy in theo khu vực (Zone A, B, C...)
+- Cấu hình hệ thống tùy chỉnh (key-value)
+- Backup/Restore toàn bộ cấu hình
+- API cho dự án khác sử dụng
+- Tự tạo cấu hình mặc định
 
 ### 1.2 🎯 Solution Overview
 
-**Core Principles**:
-- **Clean Architecture**: Separation of concerns with clear layer boundaries
-- **Domain-Driven Design**: Business logic encapsulated in domain entities
-- **CQRS Pattern**: Optimal read/write operation separation
-- **Security by Design**: End-to-end data protection and access control
-- **Performance First**: Sub-500ms response time for all operations
-
-### 1.3 📈 Expected Business Impact
-
-| **Metric** | **Current State** | **Target State** | **Improvement** |
-|------------|-------------------|------------------|-----------------|
-| Configuration Time | 4-6 hours | 45-60 minutes | **85% reduction** |
-| Configuration Errors | 15-20% | <2% | **90% reduction** |
-| System Uptime | 95% | 99.9% | **4.9% improvement** |
-| Support Tickets | 50/month | 10/month | **80% reduction** |
-| User Satisfaction | 3.2/5 | >4.8/5 | **50% improvement** |
+**Nguyên tắc thiết kế**:
+- **Đơn giản**: 3 lớp rõ ràng (UI - Business - Data)
+- **Thực dụng**: Chỉ implement những tính năng cần thiết
+- **Registry Storage**: Sử dụng Windows Registry làm storage
+- **JSON Serialization**: Dễ đọc và maintain
+- **External API**: Hỗ trợ dự án khác truy cập cấu hình
 
 ---
 
-## 2. Architecture Overview
+## 2. Simplified Architecture
 
-### 2.1 🏗️ High-Level Architecture
+### 2.1 🏗️ 3-Layer Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     PRESENTATION LAYER                          │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │  Main Dashboard │ │ Configuration   │ │ Backup Manager  │   │
-│  │                 │ │ Forms          │ │                 │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                 PRESENTATION LAYER                          │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐│
+│  │ Database Config │ │ Printer Config  │ │ System Config   ││
+│  │ Form           │ │ Form           │ │ Form           ││
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘│
+│  ┌─────────────────┐ ┌─────────────────┐                   │
+│  │ Backup Manager  │ │ Main Dashboard  │                   │
+│  │ Form           │ │ Form           │                   │
+│  └─────────────────┘ └─────────────────┘                   │
+└─────────────────────────────────────────────────────────────┘
                                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                    APPLICATION LAYER                            │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │ Command         │ │ Query           │ │ Event           │   │
-│  │ Handlers        │ │ Handlers        │ │ Handlers        │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                   BUSINESS LAYER                            │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐│
+│  │ ConfigService   │ │ BackupService   │ │ DefaultService  ││
+│  │ - CRUD操作      │ │ - Export/Import │ │ - Auto Create   ││
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘│
+│  ┌─────────────────┐ ┌─────────────────────────────────────┐│
+│  │ ValidationSvc   │ │ External API Service                ││
+│  │ - Rule Check    │ │ - For Other Projects               ││
+│  └─────────────────┘ └─────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
                                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                      DOMAIN LAYER                               │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │ Domain          │ │ Value           │ │ Domain          │   │
-│  │ Entities        │ │ Objects         │ │ Services        │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-┌─────────────────────────────────────────────────────────────────┐
-│                   INFRASTRUCTURE LAYER                          │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │ Registry        │ │ Encryption      │ │ Logging         │   │
-│  │ Repository      │ │ Service         │ │ Service         │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                   DATA LAYER                                │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐│
+│  │ Registry Helper │ │ JSON Converter  │ │ File Helper     ││
+│  │ - Read/Write    │ │ - Serialize     │ │ - Backup Files  ││
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘│
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.2 🎯 Layer Responsibilities
 
-#### **Presentation Layer (SystemConfig.Presentation)**
-- **Purpose**: User interface and user experience management
-- **Key Components**:
-  - Main Dashboard with system overview
-  - Database Configuration Forms
-  - Printer Configuration Interface
-  - System Configuration Manager
-  - Backup/Restore Manager
-  - Health Monitoring Dashboard
-- **Technologies**: Windows Forms, Custom Controls, Data Binding
+#### **Presentation Layer**
+- Windows Forms UI
+- User input validation
+- Data binding
+- User experience
 
-#### **Application Layer (SystemConfig.Application)**
-- **Purpose**: Business workflow orchestration and CQRS implementation
-- **Key Components**:
-  - Command Handlers for write operations
-  - Query Handlers for read operations
-  - Event Handlers for cross-cutting concerns
-  - Application Services for workflow coordination
-  - Validation Pipeline
-- **Technologies**: MediatR, FluentValidation, AutoMapper
+#### **Business Layer**
+- Business logic và validation
+- Configuration management
+- Backup/Restore operations
+- External API for other projects
 
-#### **Domain Layer (SystemConfig.Domain)**
-- **Purpose**: Core business logic and rules encapsulation
-- **Key Components**:
-  - Domain Entities (DatabaseConfiguration, PrinterConfiguration, SystemConfiguration)
-  - Value Objects for data integrity
-  - Domain Services for complex business operations
-  - Domain Events for business event publishing
-  - Business Rules and Constraints
-- **Technologies**: Pure .NET 8, No external dependencies
-
-#### **Infrastructure Layer (SystemConfig.Infrastructure)**
-- **Purpose**: External concerns and technical implementation
-- **Key Components**:
-  - Windows Registry Repository
-  - AES-256 Encryption Service
-  - Structured Logging with Serilog
-  - External Service Integrations
-  - Caching Implementation
-- **Technologies**: Windows Registry API, System.Security.Cryptography, Serilog
-
-### 2.3 📊 Technology Stack Rationale
-
-| **Component** | **Technology Choice** | **Rationale** |
-|---------------|---------------------|---------------|
-| **Framework** | .NET 8 | Latest performance improvements, long-term support |
-| **UI** | Windows Forms | Native Windows integration, enterprise controls |
-| **CQRS** | MediatR | Clean separation, testable architecture |
-| **Storage** | Windows Registry | Centralized, secure, native Windows storage |
-| **Encryption** | AES-256-GCM | Industry standard, authenticated encryption |
-| **Logging** | Serilog | Structured logging, flexible output targets |
-| **Validation** | FluentValidation | Readable rules, comprehensive validation |
-| **Mapping** | AutoMapper | Object-to-object mapping, convention-based |
+#### **Data Layer**
+- Windows Registry operations
+- JSON serialization
+- File operations for backup
 
 ---
 
-## 3. Domain Design
+## 3. Data Models
 
-### 3.1 📋 Core Domain Entities
+### 3.1 📋 Core Models
 
-#### **DatabaseConfiguration Entity**
-- **Purpose**: Manage database connection settings across multiple stores
-- **Key Attributes**:
-  - Unique identifier and metadata
-  - Connection settings with encryption support
-  - Database type (SQL Server, MySQL, PostgreSQL)
-  - Default configuration flag
-  - Health status tracking
-- **Business Rules**:
-  - Only one configuration can be marked as default
-  - Connection must be validated before saving
-  - Automatic backup before configuration updates
-  - Health checks must run periodically
+```csharp
+// Database Configuration Model
+public class DatabaseConfig
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Name { get; set; } = string.Empty;
+    public string Server { get; set; } = string.Empty;
+    public string Database { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public bool IsMainDatabase { get; set; } = true;
+    public DateTime CreatedDate { get; set; } = DateTime.Now;
+    public bool IsActive { get; set; } = true;
+    
+    public string ConnectionString => 
+        $"Server={Server};Database={Database};User Id={Username};Password={Password};";
+}
 
-#### **PrinterConfiguration Entity**
-- **Purpose**: Manage printer settings and food category mappings
-- **Key Attributes**:
-  - Printer device information
-  - Food category assignments
-  - Receipt template settings
-  - Print queue configuration
-  - Status tracking (Online, Offline, Error)
-- **Business Rules**:
-  - Printer must be online for category assignment
-  - Multiple printers can serve same food category
-  - Template versioning with rollback capability
-  - Print job retry mechanism for failed prints
+// Printer Configuration Model
+public class PrinterConfig
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Zone { get; set; } = string.Empty; // A, B, C, Kitchen, Bar...
+    public string PrinterName { get; set; } = string.Empty;
+    public string PrinterPath { get; set; } = string.Empty; // Network path or local
+    public bool IsDefault { get; set; } = false;
+    public DateTime CreatedDate { get; set; } = DateTime.Now;
+    public bool IsActive { get; set; } = true;
+}
 
-#### **SystemConfiguration Entity**
-- **Purpose**: Flexible system-wide configuration management
-- **Key Attributes**:
-  - User-defined configuration schemas
-  - Type-safe value storage
-  - Validation rules and constraints
-  - Version control and change tracking
-- **Business Rules**:
-  - Required configurations cannot be deleted
-  - Read-only configurations require admin access
-  - All validation rules must pass before saving
-  - Configuration changes trigger notifications
+// System Configuration Model
+public class SystemConfig
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string ConfigName { get; set; } = string.Empty;
+    public string ConfigValue { get; set; } = string.Empty;
+    public string DataType { get; set; } = "String"; // String, Integer, Boolean, Decimal
+    public string Description { get; set; } = string.Empty;
+    public bool IsRequired { get; set; } = false;
+    public DateTime CreatedDate { get; set; } = DateTime.Now;
+    public DateTime LastModified { get; set; } = DateTime.Now;
+}
 
-### 3.2 🔧 Value Objects Design
+// Complete Configuration Container
+public class AppConfiguration
+{
+    public List<DatabaseConfig> Databases { get; set; } = new();
+    public List<PrinterConfig> Printers { get; set; } = new();
+    public List<SystemConfig> SystemConfigs { get; set; } = new();
+    public DateTime LastModified { get; set; } = DateTime.Now;
+    public string Version { get; set; } = "1.0.0";
+    public string CreatedBy { get; set; } = Environment.UserName;
+}
 
-#### **Connection Settings**
-- Server, database, credentials information
-- Connection pooling parameters
-- Timeout and retry configurations
-- SSL/TLS security settings
-- Connection string generation and validation
-
-#### **Printer Settings**
-- Device name, port, and driver information
-- Paper size, quality, and orientation settings
-- Margin, font, and color configurations
-- Auto-cut and cash drawer control
-- Network printer IP and port settings
-
-#### **Template Settings**
-- Template name and content management
-- Version control with creation metadata
-- Template inheritance and customization
-- Preview and validation capabilities
-
-### 3.3 📊 Domain Events Strategy
-
-#### **Configuration Events**
-- **DatabaseConfigurationCreated**: New database configuration added
-- **DefaultConfigurationChanged**: Default database configuration updated
-- **PrinterCategoryAssigned**: Food category assigned to printer
-- **TemplateVersionUpdated**: Receipt template version changed
-- **SystemConfigurationModified**: System setting value updated
-
-#### **Event Handling Approach**
-- **Audit Trail**: All events logged for compliance
-- **Notifications**: Real-time updates to connected clients
-- **Cache Invalidation**: Automatic cache refresh on changes
-- **Business Workflows**: Trigger dependent business processes
+// Backup Information
+public class BackupInfo
+{
+    public string BackupName { get; set; } = string.Empty;
+    public DateTime BackupDate { get; set; }
+    public string FilePath { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public long FileSize { get; set; }
+    public string Version { get; set; } = string.Empty;
+}
+```
 
 ---
 
-## 4. Application Services
+## 4. Business Services
 
-### 4.1 🔄 CQRS Implementation
+### 4.1 🔧 Core Services
 
-#### **Command Pattern (Write Operations)**
-- **CreateDatabaseConfigurationCommand**: Add new database configuration
-- **UpdateDatabaseConfigurationCommand**: Modify existing configuration
-- **SetDefaultConfigurationCommand**: Change default database
-- **DeleteConfigurationCommand**: Remove configuration safely
-- **BackupConfigurationCommand**: Create configuration backup
+```csharp
+// Main Configuration Service
+public class ConfigurationService
+{
+    private readonly RegistryHelper _registryHelper;
+    private readonly ValidationService _validator;
+    
+    // Database Configuration Methods
+    public async Task<List<DatabaseConfig>> GetDatabasesAsync()
+    public async Task<DatabaseConfig> GetDatabaseByIdAsync(string id)
+    public async Task<DatabaseConfig> GetMainDatabaseAsync()
+    public async Task SaveDatabaseAsync(DatabaseConfig config)
+    public async Task DeleteDatabaseAsync(string id)
+    public async Task SetAsMainDatabaseAsync(string id)
+    
+    // Printer Configuration Methods
+    public async Task<List<PrinterConfig>> GetPrintersAsync()
+    public async Task<List<PrinterConfig>> GetPrintersByZoneAsync(string zone)
+    public async Task SavePrinterAsync(PrinterConfig config)
+    public async Task DeletePrinterAsync(string id)
+    
+    // System Configuration Methods
+    public async Task<List<SystemConfig>> GetSystemConfigsAsync()
+    public async Task<SystemConfig> GetSystemConfigAsync(string configName)
+    public async Task SaveSystemConfigAsync(SystemConfig config)
+    public async Task DeleteSystemConfigAsync(string id)
+    
+    // Helper Methods
+    public async Task<bool> TestDatabaseConnectionAsync(DatabaseConfig config)
+    public async Task<List<string>> GetAvailablePrintersAsync()
+}
 
-#### **Query Pattern (Read Operations)**
-- **GetDatabaseConfigurationQuery**: Retrieve configuration by ID
-- **ListDatabaseConfigurationsQuery**: Get paginated configuration list
-- **SearchConfigurationsQuery**: Find configurations by criteria
-- **GetHealthStatusQuery**: Check configuration health status
-- **GetAuditHistoryQuery**: Retrieve configuration change history
+// Backup and Restore Service
+public class BackupService
+{
+    public async Task<string> CreateBackupAsync(string backupName, string description = "")
+    public async Task<List<BackupInfo>> GetBackupHistoryAsync()
+    public async Task RestoreFromBackupAsync(string backupFilePath)
+    public async Task<bool> ValidateBackupFileAsync(string backupFilePath)
+    public async Task DeleteBackupAsync(string backupFilePath)
+}
 
-#### **Command Validation Pipeline**
-- **Syntax Validation**: Data format and structure checks
-- **Business Rule Validation**: Domain-specific constraint verification
-- **Security Validation**: Permission and access control checks
-- **Performance Validation**: Operation impact assessment
+// Default Configuration Service
+public class DefaultConfigurationService
+{
+    public async Task CreateDefaultConfigurationsAsync()
+    public async Task<bool> HasDefaultConfigurationsAsync()
+    public async Task ResetToDefaultAsync()
+    
+    private AppConfiguration GetDefaultConfiguration()
+    {
+        return new AppConfiguration
+        {
+            Databases = new List<DatabaseConfig>
+            {
+                new DatabaseConfig
+                {
+                    Name = "Main Database",
+                    Server = "localhost",
+                    Database = "POSDatabase",
+                    Username = "sa",
+                    Password = "",
+                    IsMainDatabase = true
+                }
+            },
+            Printers = new List<PrinterConfig>
+            {
+                new PrinterConfig { Zone = "A", PrinterName = "Receipt Printer A" },
+                new PrinterConfig { Zone = "B", PrinterName = "Receipt Printer B" },
+                new PrinterConfig { Zone = "Kitchen", PrinterName = "Kitchen Printer" }
+            },
+            SystemConfigs = new List<SystemConfig>
+            {
+                new SystemConfig { ConfigName = "CompanyName", ConfigValue = "Your Company", DataType = "String" },
+                new SystemConfig { ConfigName = "TaxRate", ConfigValue = "10", DataType = "Decimal" },
+                new SystemConfig { ConfigName = "AutoBackup", ConfigValue = "true", DataType = "Boolean" }
+            }
+        };
+    }
+}
 
-### 4.2 🎯 Application Services Architecture
+// External API Service (For other projects)
+public class ExternalApiService
+{
+    // Static methods for other projects to use
+    public static DatabaseConfig GetMainDatabase()
+    public static List<PrinterConfig> GetPrintersByZone(string zone)
+    public static string GetSystemConfigValue(string configName)
+    public static T GetSystemConfigValue<T>(string configName)
+    public static bool IsConfigurationExists()
+}
 
-#### **Configuration Management Services**
-- **DatabaseConfigurationService**: Complete CRUD with health monitoring
-- **PrinterConfigurationService**: Printer discovery and template management
-- **SystemConfigurationService**: Schema management and validation
-- **BackupService**: Automated backup/restore with scheduling
-
-#### **Cross-Cutting Services**
-- **ValidationService**: Real-time validation with custom rules
-- **NotificationService**: Toast notifications and system alerts
-- **AuditService**: Comprehensive change tracking and compliance
-- **HealthCheckService**: System monitoring and performance metrics
-
-#### **Integration Services**
-- **DatabaseConnectionService**: Multi-database connection management
-- **PrinterCommunicationService**: Printer driver integration
-- **TemplateRenderingService**: Receipt template processing
-- **ExportImportService**: Configuration data migration
-
-### 4.3 📊 Event Handling Strategy
-
-#### **Domain Event Processing**
-- **Immediate Processing**: Critical business rules enforcement
-- **Asynchronous Processing**: Audit logging and notifications
-- **Batch Processing**: Performance metrics and reporting
-- **Event Sourcing**: Complete audit trail reconstruction
-
-#### **Event Distribution**
-- **In-Process Events**: Domain events within application boundary
-- **System Events**: Windows event log integration
-- **Application Events**: Custom notification system
-- **Integration Events**: External system notifications
-
----
-
-## 5. Infrastructure Layer
-
-### 5.1 💾 Data Access Strategy
-
-#### **Windows Registry Repository**
-- **Storage Location**: `HKEY_LOCAL_MACHINE\SOFTWARE\[Company]\[Product]`
-- **Data Organization**: Hierarchical structure by configuration type
-- **Serialization**: JSON with custom converters for complex types
-- **Encryption**: AES-256-GCM for sensitive data fields
-- **Versioning**: Configuration version tracking for rollback support
-
-#### **Repository Pattern Implementation**
-- **Generic Repository**: Base CRUD operations for all entities
-- **Specification Pattern**: Complex query composition
-- **Unit of Work**: Transaction coordination across repositories
-- **Caching Layer**: Memory and distributed caching for performance
-
-#### **Data Migration Strategy**
-- **Version Detection**: Automatic schema version identification
-- **Migration Scripts**: Automated data transformation scripts
-- **Rollback Support**: Safe migration rollback capabilities
-- **Backup Integration**: Automatic backup before migrations
-
-### 5.2 🔐 Security Services
-
-#### **Encryption Service**
-- **Algorithm**: AES-256-GCM for authenticated encryption
-- **Key Management**: Windows DPAPI for key protection
-- **Key Rotation**: Automated key rotation with backward compatibility
-- **Performance**: Hardware acceleration when available
-
-#### **Permission Service**
-- **Authentication**: Windows Authentication integration
-- **Authorization**: Role-based access control (RBAC)
-- **Audit Logging**: Complete access attempt logging
-- **Session Management**: Secure session handling with timeout
-
-#### **Data Classification**
-- **Public**: Non-sensitive configuration data
-- **Internal**: Business configuration settings
-- **Confidential**: Connection strings and credentials
-- **Restricted**: Encryption keys and security tokens
-
-### 5.3 📊 Logging and Monitoring
-
-#### **Structured Logging Configuration**
-- **File Logging**: Rolling files with 30-day retention
-- **Console Logging**: Development and debugging output
-- **Windows Event Log**: System-level event integration
-- **Performance Counters**: Custom performance metrics
-
-#### **Log Categories**
-- **Application Events**: Business operation logging
-- **Security Events**: Authentication and authorization
-- **Performance Events**: Operation timing and metrics
-- **Error Events**: Exception and failure tracking
-
-#### **Monitoring Integration**
-- **Health Checks**: Automated system health verification
-- **Performance Metrics**: Response time and throughput tracking
-- **Alert System**: Proactive issue notification
-- **Dashboard Integration**: Real-time status visualization
+// Validation Service
+public class ValidationService
+{
+    public ValidationResult ValidateDatabase(DatabaseConfig config)
+    public ValidationResult ValidatePrinter(PrinterConfig config)
+    public ValidationResult ValidateSystemConfig(SystemConfig config)
+    public async Task<bool> TestDatabaseConnectionAsync(DatabaseConfig config)
+}
+```
 
 ---
 
-## 6. Presentation Layer
+## 5. Registry Management
 
-### 6.1 🖥️ Windows Forms Architecture
+### 5.1 💾 Registry Structure
 
-#### **Main Dashboard Design**
-- **System Overview**: Key metrics and status indicators
-- **Quick Actions**: Common configuration tasks
-- **Health Monitor**: Real-time system health status
-- **Recent Activity**: Latest configuration changes
-- **Alert Center**: System notifications and warnings
+```
+HKEY_LOCAL_MACHINE\SOFTWARE\YourCompany\POSConfig\
+├── Databases\
+│   ├── [GUID1] = {JSON DatabaseConfig}
+│   ├── [GUID2] = {JSON DatabaseConfig}
+│   └── MainDatabaseId = {GUID1}
+├── Printers\
+│   ├── [GUID1] = {JSON PrinterConfig}
+│   ├── [GUID2] = {JSON PrinterConfig}
+│   └── [GUID3] = {JSON PrinterConfig}
+├── SystemConfigs\
+│   ├── [GUID1] = {JSON SystemConfig}
+│   ├── [GUID2] = {JSON SystemConfig}
+│   └── [GUID3] = {JSON SystemConfig}
+└── Metadata\
+    ├── Version = "1.0.0"
+    ├── LastModified = "2024-12-20T10:30:00"
+    └── CreatedBy = "Administrator"
+```
 
-#### **Configuration Forms**
-- **Database Configuration**: Connection management with testing
-- **Printer Configuration**: Printer setup with preview
-- **System Configuration**: Dynamic schema-based forms
-- **Backup Manager**: Backup scheduling and restore operations
+### 5.2 🔧 Registry Helper Implementation
 
-#### **Form Base Classes**
-- **ConfigurationFormBase**: Common configuration form functionality
-- **ValidationFormBase**: Real-time validation integration
-- **AuditableFormBase**: Automatic audit trail generation
+```csharp
+public class RegistryHelper
+{
+    private const string REGISTRY_PATH = @"SOFTWARE\YourCompany\POSConfig";
+    
+    public async Task<T> GetValueAsync<T>(string subKey, string valueName)
+    public async Task SetValueAsync(string subKey, string valueName, object value)
+    public async Task DeleteValueAsync(string subKey, string valueName)
+    public async Task<List<string>> GetSubKeyNamesAsync(string subKey)
+    public async Task<Dictionary<string, object>> GetAllValuesAsync(string subKey)
+    
+    // JSON Serialization helpers
+    private string SerializeToJson<T>(T obj)
+    private T DeserializeFromJson<T>(string json)
+    
+    // Registry key management
+    private RegistryKey OpenKey(string subKey, bool writable = false)
+    private void EnsureKeyExists(string subKey)
+}
 
-### 6.2 ✨ Modern UI/UX Features
-
-#### **User Experience Enhancements**
-- **Responsive Design**: Adaptive layout for different screen sizes
-- **Theme Support**: Light/Dark theme with user preference
-- **Accessibility**: WCAG 2.1 AA compliance with keyboard navigation
-- **Real-time Updates**: Live configuration changes and progress indicators
-
-#### **Interactive Elements**
-- **Advanced Search**: Multi-criteria filtering with auto-complete
-- **Drag & Drop**: Configuration reordering and template management
-- **Context Menus**: Right-click actions and keyboard shortcuts
-- **Validation Feedback**: Real-time error highlighting with suggestions
-
-#### **Performance Optimizations**
-- **Lazy Loading**: Load data on demand for large datasets
-- **Virtual Scrolling**: Efficient handling of large lists
-- **Background Processing**: Non-blocking UI for long operations
-- **Memory Management**: Efficient resource usage and cleanup
-
----
-
-## 7. Security Architecture
-
-### 7.1 🔒 Zero-Trust Security Model
-
-#### **Authentication Framework**
-- **Windows Authentication**: Seamless enterprise integration
-- **Multi-Factor Authentication**: Additional security layer option
-- **Session Management**: Secure session handling with timeout
-- **Single Sign-On**: Enterprise SSO integration capability
-
-#### **Authorization System**
-- **Role-Based Access Control**: Predefined roles with permissions
-- **Resource-Level Security**: Granular access control per configuration
-- **Operation-Level Permissions**: Read, Write, Delete, Admin actions
-- **Dynamic Permissions**: Context-aware permission evaluation
-
-#### **Data Protection Strategy**
-- **Encryption at Rest**: AES-256-GCM for stored data
-- **Encryption in Transit**: TLS 1.3 for network communications
-- **Key Management**: Secure key storage and rotation
-- **Data Classification**: Automatic sensitive data identification
-
-### 7.2 🛡️ Compliance and Audit
-
-#### **Audit Trail System**
-- **Complete Activity Logging**: All user actions and system events
-- **Immutable Audit Records**: Tamper-proof audit trail
-- **Compliance Reporting**: Automated compliance report generation
-- **Data Retention**: Configurable audit data retention policies
-
-#### **Security Monitoring**
-- **Intrusion Detection**: Unusual access pattern identification
-- **Vulnerability Management**: Regular security assessment
-- **Incident Response**: Automated security incident handling
-- **Compliance Validation**: Continuous compliance monitoring
-
-#### **Data Privacy Controls**
-- **Data Minimization**: Collect only necessary information
-- **Access Controls**: Restrict data access to authorized users
-- **Data Masking**: Sensitive data masking in logs and reports
-- **Right to Erasure**: Secure data deletion capabilities
+// File Helper for Backup operations
+public class FileHelper
+{
+    public async Task<string> ExportToFileAsync(AppConfiguration config, string filePath)
+    public async Task<AppConfiguration> ImportFromFileAsync(string filePath)
+    public async Task<bool> ValidateBackupFileAsync(string filePath)
+    public async Task<List<string>> GetBackupFilesAsync(string backupDirectory)
+}
+```
 
 ---
 
-## 8. Performance Strategy
+## 6. UI Components
 
-### 8.1 ⚡ Caching Architecture
+### 6.1 🖥️ Windows Forms Structure
 
-#### **Multi-Level Caching**
-- **Level 1 (Memory)**: Frequently accessed configurations
-- **Level 2 (Distributed)**: Shared cache across instances
-- **Level 3 (Registry)**: Persistent storage with fast access
-- **Query Result Caching**: Database query result optimization
+#### **Main Dashboard (MainForm)**
+```csharp
+public partial class MainForm : Form
+{
+    // Overview của toàn bộ hệ thống
+    // Quick access buttons
+    // Recent activity log
+    // System status indicators
+}
+```
 
-#### **Cache Management**
-- **Smart Invalidation**: Intelligent cache refresh policies
-- **Cache Warming**: Predictive data preloading
-- **Compression**: Efficient cache data storage
-- **Monitoring**: Cache hit ratio and performance tracking
+#### **Database Configuration Form**
+```csharp
+public partial class DatabaseConfigForm : Form
+{
+    // DataGridView for database list
+    // Form for add/edit database
+    // Test connection button
+    // Set as main database option
+}
+```
 
-#### **Performance Targets**
-- **Response Time**: <500ms for all user operations
-- **Throughput**: >100 requests per second sustained
-- **Memory Usage**: <200MB baseline application footprint
-- **Cache Hit Ratio**: >90% for frequently accessed data
+#### **Printer Configuration Form**
+```csharp
+public partial class PrinterConfigForm : Form
+{
+    // Zone selection combo
+    // Available printers dropdown
+    // Printer mapping grid
+    // Test print function
+}
+```
 
-### 8.2 🚀 Optimization Strategies
+#### **System Configuration Form**
+```csharp
+public partial class SystemConfigForm : Form
+{
+    // Dynamic form based on config type
+    // Add custom config option
+    // Validation feedback
+    // Save/Cancel operations
+}
+```
 
-#### **Asynchronous Operations**
-- **Non-Blocking UI**: All I/O operations run asynchronously
-- **Background Processing**: Configuration validation and backup
-- **Parallel Execution**: Multi-threaded operation processing
-- **Cancellation Support**: User-cancellable long-running operations
+#### **Backup Manager Form**
+```csharp
+public partial class BackupManagerForm : Form
+{
+    // Create backup section
+    // Backup history list
+    // Restore functionality
+    // Backup file validation
+}
+```
 
-#### **Resource Optimization**
-- **Connection Pooling**: Efficient database connection reuse
-- **Memory Management**: Proactive garbage collection optimization
-- **Lazy Loading**: On-demand data loading strategies
-- **Batch Operations**: Bulk configuration update optimization
+### 6.2 ✨ UI Features
 
-#### **Monitoring and Alerting**
-- **Performance Metrics**: Real-time performance data collection
-- **Threshold Monitoring**: Automatic performance threshold alerts
-- **Capacity Planning**: Resource usage trend analysis
-- **Optimization Recommendations**: Automated performance suggestions
+#### **Common UI Components**
+- Modern flat design với consistent styling
+- Real-time validation feedback
+- Progress indicators cho long operations
+- Toast notifications
+- Confirmation dialogs
+- Error handling với user-friendly messages
 
----
-
-## 9. Quality Assurance
-
-### 9.1 🧪 Testing Strategy
-
-#### **Testing Pyramid**
-- **Unit Tests (70%)**: Domain entities, value objects, business logic
-- **Integration Tests (20%)**: Repository operations, service interactions
-- **UI Tests (10%)**: User interface and user workflow validation
-
-#### **Quality Metrics**
-- **Code Coverage**: >95% for critical business logic
-- **Test Pass Rate**: 100% for all automated tests
-- **Performance Tests**: All operations meet performance targets
-- **Security Tests**: Zero critical security vulnerabilities
-
-#### **Testing Automation**
-- **Continuous Integration**: Automated test execution on commits
-- **Performance Testing**: Automated performance benchmark validation
-- **Security Testing**: Automated vulnerability scanning
-- **Regression Testing**: Automated regression test suite execution
-
-### 9.2 🔍 Quality Gates
-
-#### **Code Quality Gates**
-- **Static Analysis**: Code quality score >8.0/10
-- **Security Scan**: Zero critical vulnerabilities
-- **Performance Benchmark**: All targets met
-- **Test Coverage**: >95% for critical components
-
-#### **Release Quality Gates**
-- **User Acceptance Testing**: 100% acceptance criteria met
-- **Performance Validation**: Production-like load testing
-- **Security Audit**: Comprehensive security review
-- **Documentation Completeness**: All documentation updated
+#### **Data Binding Strategy**
+- BindingSource cho data grids
+- Two-way binding cho form controls
+- Validation attributes
+- Custom validation rules
 
 ---
 
-## 10. Implementation Strategy
+## 7. Implementation Plan
 
-### 10.1 🚀 Delivery Roadmap
+### 7.1 🚀 Development Phases
 
-#### **Phase 1: Foundation (Weeks 1-4)**
-**Sprint 1-2 Objectives:**
-- Establish Clean Architecture project structure
-- Implement core domain entities and value objects
-- Setup dependency injection and logging infrastructure
-- Create basic repository pattern with Registry storage
+#### **Phase 1: Core Foundation (Week 1)**
+- [ ] Setup project structure
+- [ ] Implement data models
+- [ ] Create registry helper
+- [ ] Basic configuration service
 
-**Key Deliverables:**
-- Solution structure with layered architecture
-- Domain models with comprehensive business rules
-- Basic CRUD operations for all configuration types
-- Windows Registry integration with encryption
+#### **Phase 2: Business Services (Week 2)**
+- [ ] Complete configuration service
+- [ ] Implement validation service
+- [ ] Create backup service
+- [ ] Add default configuration service
 
-#### **Phase 2: Core Features (Weeks 5-8)**
-**Sprint 3-4 Objectives:**
-- Complete database configuration management
-- Implement printer configuration with template system
-- Build system configuration framework
-- Develop backup/restore functionality
+#### **Phase 3: User Interface (Week 3)**
+- [ ] Create main dashboard
+- [ ] Database configuration form
+- [ ] Printer configuration form
+- [ ] System configuration form
 
-**Key Deliverables:**
-- Database connection management with health monitoring
-- Printer discovery and category mapping
-- Dynamic system configuration with validation
-- Automated backup/restore with scheduling
+#### **Phase 4: Advanced Features (Week 4)**
+- [ ] Backup manager form
+- [ ] External API service
+- [ ] Testing và bug fixes
+- [ ] Documentation
 
-#### **Phase 3: Advanced Features (Weeks 9-12)**
-**Sprint 5-6 Objectives:**
-- Implement comprehensive security framework
-- Build performance monitoring and optimization
-- Create advanced UI features and themes
-- Develop audit trail and compliance reporting
+### 7.2 📊 File Structure
 
-**Key Deliverables:**
-- Enterprise-grade security implementation
-- Performance monitoring dashboard
-- Modern UI with accessibility compliance
-- Complete audit trail and compliance reports
+```
+POSConfigApp/
+├── Models/
+│   ├── DatabaseConfig.cs
+│   ├── PrinterConfig.cs
+│   ├── SystemConfig.cs
+│   └── AppConfiguration.cs
+├── Services/
+│   ├── ConfigurationService.cs
+│   ├── BackupService.cs
+│   ├── DefaultConfigurationService.cs
+│   ├── ExternalApiService.cs
+│   └── ValidationService.cs
+├── Helpers/
+│   ├── RegistryHelper.cs
+│   ├── FileHelper.cs
+│   └── JsonHelper.cs
+├── Forms/
+│   ├── MainForm.cs
+│   ├── DatabaseConfigForm.cs
+│   ├── PrinterConfigForm.cs
+│   ├── SystemConfigForm.cs
+│   └── BackupManagerForm.cs
+├── Utils/
+│   ├── Constants.cs
+│   ├── Validators.cs
+│   └── Extensions.cs
+└── Program.cs
+```
 
-#### **Phase 4: Production Ready (Weeks 13-16)**
-**Sprint 7-8 Objectives:**
-- Complete comprehensive testing and bug fixes
-- Finalize documentation and training materials
-- Prepare production deployment automation
-- Conduct user acceptance testing
+### 7.3 🎯 Usage Examples
 
-**Key Deliverables:**
-- Production-ready application
-- Complete technical and user documentation
-- Deployment automation and monitoring
-- Training materials and support procedures
+#### **For External Projects**
+```csharp
+// Get main database connection
+var mainDb = ExternalApiService.GetMainDatabase();
+var connectionString = mainDb.ConnectionString;
 
-### 10.2 📊 Success Metrics
+// Get printer for specific zone
+var kitchenPrinters = ExternalApiService.GetPrintersByZone("Kitchen");
+var printerName = kitchenPrinters.FirstOrDefault()?.PrinterName;
 
-#### **Technical KPIs**
-- **Performance**: <500ms response time for all operations
-- **Reliability**: 99.9% uptime with <0.1% error rate
-- **Security**: Zero critical vulnerabilities in production
-- **Quality**: >95% test coverage with <5% defect rate
+// Get system configuration
+var companyName = ExternalApiService.GetSystemConfigValue("CompanyName");
+var taxRate = ExternalApiService.GetSystemConfigValue<decimal>("TaxRate");
+```
 
-#### **Business KPIs**
-- **Efficiency**: 85% reduction in configuration time
-- **User Satisfaction**: >4.8/5 user rating
-- **Cost Savings**: 80% reduction in support tickets
-- **Adoption Rate**: >95% user adoption within 3 months
+### 7.4 ✅ Success Criteria
 
-### 10.3 🔄 Risk Management
-
-#### **High-Priority Risks**
-- **Registry Corruption**: Mitigated by automated backup and rollback
-- **Performance Issues**: Addressed by continuous monitoring and optimization
-- **Security Vulnerabilities**: Prevented by regular audits and scanning
-- **User Adoption**: Managed through training and change management
-
-#### **Contingency Plans**
-- **Data Recovery**: Automated backup restoration procedures
-- **Performance Recovery**: Emergency performance optimization protocols
-- **Security Incident**: Immediate incident response procedures
-- **Rollback Strategy**: Safe application version rollback capability
-
----
-
-## 11. Deployment & Operations
-
-### 11.1 📦 Deployment Strategy
-
-#### **Installation Package**
-- **MSI Installer**: Professional Windows installer with prerequisites
-- **Silent Installation**: Automated deployment for enterprise environments
-- **Upgrade Support**: In-place upgrades with data migration
-- **Rollback Capability**: Safe rollback to previous version
-
-#### **Environment Management**
-- **Development**: Local development with test data
-- **Testing**: Integrated testing environment with production-like data
-- **Staging**: Pre-production validation environment
-- **Production**: Live production environment with monitoring
-
-#### **Configuration Management**
-- **Environment-Specific Settings**: Separate configuration per environment
-- **Feature Toggles**: Gradual feature rollout capability
-- **A/B Testing**: Configuration variation testing
-- **Monitoring Integration**: Deployment health monitoring
-
-### 11.2 🔧 Operations Management
-
-#### **Monitoring and Alerting**
-- **Application Monitoring**: Performance metrics and error tracking
-- **Infrastructure Monitoring**: System resource usage monitoring
-- **Business Monitoring**: Configuration usage and adoption metrics
-- **Alert Management**: Proactive issue notification and escalation
-
-#### **Maintenance Procedures**
-- **Regular Backups**: Automated daily configuration backups
-- **Health Checks**: Scheduled system health verification
-- **Performance Optimization**: Regular performance tuning
-- **Security Updates**: Automated security patch management
-
-#### **Support and Troubleshooting**
-- **Log Analysis**: Centralized log aggregation and analysis
-- **Diagnostic Tools**: Built-in system diagnostic capabilities
-- **Remote Support**: Secure remote troubleshooting capability
-- **Knowledge Base**: Comprehensive troubleshooting documentation
+- [ ] **Functionality**: All core features working correctly
+- [ ] **UI/UX**: Intuitive và user-friendly interface
+- [ ] **Performance**: Fast response times cho all operations
+- [ ] **Reliability**: No data loss during backup/restore
+- [ ] **External API**: Other projects có thể dễ dàng sử dụng
+- [ ] **Default Configs**: Automatically create khi cần thiết
 
 ---
 
 ## 📋 Conclusion
 
-This architecture document provides a comprehensive blueprint for building a modern, secure, and maintainable POS Multi-Store Configuration Solution. The solution emphasizes:
+Architecture này được thiết kế đơn giản nhưng đầy đủ chức năng cho việc quản lý cấu hình POS. Điểm mạnh:
 
 ### 🎯 **Core Strengths**
-- **Clean Architecture** with clear separation of concerns
-- **Domain-Driven Design** with rich business logic encapsulation
-- **Enterprise Security** with comprehensive data protection
-- **Performance Excellence** with optimized caching and async operations
-- **Modern UI/UX** with accessibility and responsive design
-- **Quality Assurance** with comprehensive testing and monitoring
+- **Simple & Practical**: 3-layer architecture dễ hiểu và maintain
+- **Registry Storage**: Native Windows storage, reliable và secure
+- **External API**: Easy integration với other projects
+- **Auto Default**: Tự động tạo config mặc định
+- **Backup/Restore**: Complete data protection
 
-### 📈 **Business Value**
-- **85% reduction** in configuration time
-- **90% reduction** in configuration errors
-- **99.9% system uptime** with automatic failover
-- **80% reduction** in support tickets
-- **50% improvement** in user satisfaction
+### 📈 **Benefits**
+- **Fast Development**: Simple architecture = faster implementation
+- **Easy Maintenance**: Clear separation of concerns
+- **User Friendly**: Intuitive Windows Forms interface  
+- **Integration Ready**: Ready-to-use API cho external projects
+- **Data Safety**: Comprehensive backup and restore functionality
 
-### 🚀 **Implementation Success Factors**
-- Phased delivery approach with incremental value
-- Comprehensive testing strategy with quality gates
-- Risk management with contingency planning
-- Change management with training and support
-- Continuous monitoring and optimization
-
-This architecture ensures the solution will meet current business needs while providing a solid foundation for future enhancements and scalability requirements.
+Kiến trúc này đảm bảo đáp ứng tất cả yêu cầu business trong khi giữ được tính đơn giản và dễ maintain.
